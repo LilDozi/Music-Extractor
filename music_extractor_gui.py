@@ -14,6 +14,16 @@ from tkinter.scrolledtext import ScrolledText
 EXTRACT_SCRIPT = "extract_audio.py"
 
 
+def _find_ffmpeg() -> str | None:
+    """Return path to ffmpeg or ``None`` if not found."""
+    script_dir = Path(__file__).resolve().parent
+    exe = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
+    local = script_dir / exe
+    if local.exists():
+        return str(local)
+    return shutil.which("ffmpeg")
+
+
 class ExtractorGUI:
     """Simple Tkinter GUI wrapper for extract_audio.py."""
 
@@ -77,13 +87,11 @@ class ExtractorGUI:
         if not self.input_files:
             messagebox.showwarning("No Input", "Please select input files first.")
             return
-        if not self.output_dir:
-            messagebox.showwarning("No Output Folder", "Please select an output folder first.")
-            return
-        if shutil.which("ffmpeg") is None:
+        ffmpeg_path = _find_ffmpeg()
+        if ffmpeg_path is None:
             messagebox.showerror(
                 "FFmpeg Not Found",
-                "FFmpeg is required but was not found in your PATH.",
+                "FFmpeg is required but was not found.",
             )
             return
         if shutil.which("python") is None:
@@ -100,10 +108,26 @@ class ExtractorGUI:
         self.worker.start()
 
     def _run_extraction_thread(self) -> None:
+        ffmpeg_path = _find_ffmpeg()
+        env = os.environ.copy()
+        if ffmpeg_path:
+            env["FFMPEG_PATH"] = ffmpeg_path
+
         for input_path in self.input_files:
             name = Path(input_path).stem
-            output_file = os.path.join(self.output_dir, f"{name}.{self.format_var.get()}")
-            cmd = [sys.executable, EXTRACT_SCRIPT, input_path, output_file, "--codec", self.format_var.get()]
+            out_dir = self.output_dir if self.output_dir else str(Path(input_path).parent)
+            output_file = os.path.join(out_dir, f"{name}.{self.format_var.get()}")
+            log_file = os.path.join(out_dir, f"{name}.log")
+            cmd = [
+                sys.executable,
+                EXTRACT_SCRIPT,
+                input_path,
+                output_file,
+                "--codec",
+                self.format_var.get(),
+                "--log",
+                log_file,
+            ]
             self.log_queue.put(f"Running: {' '.join(cmd)}\n")
             try:
                 proc = subprocess.Popen(
@@ -111,6 +135,7 @@ class ExtractorGUI:
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,
+                    env=env,
                 )
             except FileNotFoundError as exc:
                 self.log_queue.put(f"Error: {exc}\n")

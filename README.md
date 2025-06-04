@@ -23,8 +23,10 @@ python extract_audio.py input.mov output.ogg --codec vorbis
 
 ## Graphical Interface
 
-Run `python music_extractor_gui.py` for a minimal desktop interface. Use the
-buttons to pick input files and an output folder, choose the output format, and
-click **Run Extraction** to process each file. Progress messages will appear in
-the log window.
+Run `python music_extractor_gui.py` for a desktop interface. Use the buttons to
+pick input files and optionally an output folder. If no folder is chosen, each
+audio file is written next to its source video. A log file (`*.log`) containing
+ffmpeg output is also generated alongside each extracted file. The GUI checks
+for an `ffmpeg` executable in the project directory first, falling back to the
+one on your `PATH`.
 
