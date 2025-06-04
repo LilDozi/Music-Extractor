@@ -1,17 +1,12 @@
-import os
-import sys
-import subprocess
 import threading
 import queue
-import shutil
 from pathlib import Path
 
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter.scrolledtext import ScrolledText
 
-# Path to the extraction script. Adjust if the filename differs.
-EXTRACT_SCRIPT = "extract_audio.py"
+from extract_audio import extract_audio, find_ffmpeg
 
 
 class ExtractorGUI:
@@ -77,19 +72,12 @@ class ExtractorGUI:
         if not self.input_files:
             messagebox.showwarning("No Input", "Please select input files first.")
             return
-        if not self.output_dir:
-            messagebox.showwarning("No Output Folder", "Please select an output folder first.")
-            return
-        if shutil.which("ffmpeg") is None:
+        try:
+            self.ffmpeg_path = find_ffmpeg()
+        except FileNotFoundError:
             messagebox.showerror(
                 "FFmpeg Not Found",
-                "FFmpeg is required but was not found in your PATH.",
-            )
-            return
-        if shutil.which("python") is None:
-            messagebox.showerror(
-                "Python Not Found",
-                "Python executable not found in PATH.",
+                "FFmpeg is required but was not found.",
             )
             return
 
@@ -101,31 +89,17 @@ class ExtractorGUI:
 
     def _run_extraction_thread(self) -> None:
         for input_path in self.input_files:
-            name = Path(input_path).stem
-            output_file = os.path.join(self.output_dir, f"{name}.{self.format_var.get()}")
-            cmd = [sys.executable, EXTRACT_SCRIPT, input_path, output_file, "--codec", self.format_var.get()]
-            self.log_queue.put(f"Running: {' '.join(cmd)}\n")
+            in_path = Path(input_path)
+            out_dir = Path(self.output_dir) if self.output_dir else in_path.parent
+            output_file = out_dir / f"{in_path.stem}.{self.format_var.get()}"
+            log_file = output_file.with_suffix(".txt")
+            self.log_queue.put(f"Extracting {in_path} -> {output_file}\n")
             try:
-                proc = subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                )
-            except FileNotFoundError as exc:
-                self.log_queue.put(f"Error: {exc}\n")
-                messagebox.showerror("Execution Failed", str(exc))
-                self.log_queue.put("DONE")
-                return
-
-            assert proc.stdout is not None  # for mypy/type hints
-            for line in proc.stdout:
-                self.log_queue.put(line)
-            proc.wait()
-            if proc.returncode != 0:
-                self.log_queue.put(f"Extraction failed for {input_path}\n")
-            else:
+                output = extract_audio(in_path, output_file, self.format_var.get(), ffmpeg_path=self.ffmpeg_path, log_file=log_file)
+                self.log_queue.put(output)
                 self.log_queue.put(f"Finished {input_path}\n")
+            except Exception as exc:
+                self.log_queue.put(f"Error processing {input_path}: {exc}\n")
         self.log_queue.put("DONE")
 
     def _process_queue(self) -> None:
