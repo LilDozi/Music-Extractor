@@ -19,7 +19,6 @@ python extract_audio.py input.mp4 output.mp3
 Example with explicit codec:
 ```bash
 python extract_audio.py input.mov output.ogg --codec vorbis
-```
 
 ## Graphical Interface
 
@@ -27,4 +26,3 @@ Run `python music_extractor_gui.py` for a minimal desktop interface. Use the
 buttons to pick input files and an output folder, choose the output format, and
 click **Run Extraction** to process each file. Progress messages will appear in
 the log window.
-
