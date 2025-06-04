@@ -1,8 +1,9 @@
 # Music-Extractor
 
 A simple Python script to extract audio from video files using `ffmpeg`.
-If an `ffmpeg` executable is placed alongside the Python files it will be used
-automatically, otherwise the system `ffmpeg` on `PATH` is required.
+If an `ffmpeg` executable is bundled with this project it will be used
+automatically. Place the binary either next to the Python files or inside an
+`ffmpeg` folder. Otherwise the system `ffmpeg` on `PATH` is required.
 
 ## Requirements
 - Python 3.10+

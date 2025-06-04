@@ -5,10 +5,20 @@ from pathlib import Path
 
 
 def find_ffmpeg() -> str:
-    """Return path to ffmpeg executable preferring a local copy."""
-    local = Path(__file__).with_name("ffmpeg")
-    if local.exists():
-        return str(local.resolve())
+    """Return path to an ``ffmpeg`` executable preferring bundled copies."""
+    here = Path(__file__).resolve().parent
+    candidates = [
+        here / "ffmpeg",
+        here / "ffmpeg.exe",
+        here / "ffmpeg" / "ffmpeg",
+        here / "ffmpeg" / "ffmpeg.exe",
+        here / "ffmpeg" / "bin" / "ffmpeg",
+        here / "ffmpeg" / "bin" / "ffmpeg.exe",
+    ]
+    for path in candidates:
+        if path.exists():
+            return str(path)
+
     ffmpeg = shutil.which("ffmpeg")
     if ffmpeg:
         return ffmpeg
